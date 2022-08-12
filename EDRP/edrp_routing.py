@@ -237,6 +237,7 @@ class Report(app_manager.RyuApp):
                                         self.send_packet(in_dp,in_ofp.OFP_NO_BUFFER,in_ofp.OFPP_CONTROLLER,actions,p.data)
                                         dpid_dest = self.Get_dst_dpid(_dmac)
                                         path_route=[]
+                                        
                                         path_route = self.FindRoute(in_dpid,dpid_dest,self.MAC_table[in_dpid][in_smac],self.MAC_table[dpid_dest][_dmac],in_smac,_dmac)
                                         print("\n------------------------------------- Route -------------------------------------")
                                         print("\n Optimal path: {}".format(path_route))
@@ -260,8 +261,9 @@ class Report(app_manager.RyuApp):
                                             _inst    = [_ofp_parser.OFPInstructionActions(_ofp.OFPIT_APPLY_ACTIONS, _actions)]
                                             _match   = _ofp_parser.OFPMatch(eth_dst=_dmac, in_port=_pout)
                                             self.flow_add(_dp,flow_idle_timeout, 2, _match, _inst,_dmac,0,_pin,_dp.id)
-                        
+
                                         break
+                                        
                     else:        
                         self.ARP_table[in_dpid][in_smac]    =   _sip
                         print("      + Update ARP table: MAC={} <--> IPv4={}".format(in_smac,_sip))
@@ -416,7 +418,7 @@ class Report(app_manager.RyuApp):
             #self.logger.info('%016x  %8x %8d ',switch.id,
                     #               p.port_no,p.curr_speed)
             if p.curr_speed !=0:
-                self.link_capacity[switch.id][p.port_no] =    p.curr_speed
+                self.link_capacity[switch.id][p.port_no] =    p.curr_speed / 100
         self.count_link_capacity += 1
         if self.count_link_capacity == 8:
             print("Link Capacity: {}".format(self.link_capacity))
@@ -1043,25 +1045,25 @@ class Report(app_manager.RyuApp):
                 return self.path_and_cost[minpos]
             else:
                 if self.have_replica_flow:
-                    self.data_rate_estimate_copy = copy.deepcopy(self.data_rate_estimate)
                     sum_of_cost = []
-                    for each_path in self.data_rate_estimate:
-                        save = 0
-                        for sw, ports in list(each_path.items()):
-                            save += ports[2]
-                        sum_of_cost.append(save)
-
                     for each_path in self.path_and_cost:
                         for path in self.data_rate_estimate:
                             if each_path.keys() == path.keys():
                                 for sw, ports in list(path.items()):
-                                    self.path_and_cost[sw][2] += ports[2]
+                                    each_path[sw][2] += ports[2]
                     self.estimate_link_cost_dict()
+                    self.relocate_the_flow()
+                    sum_of_cost = []
+                    for each_path in self.path_and_cost:
+                        save = 0
+                        for sw, ports in list(each_path.items()):
+                            save += ports[2]
+                        sum_of_cost.append(save)
+                    minpos = sum_of_cost.index(min(sum_of_cost))
+                    self.flow_recent_exist.append(self.path_and_cost[minpos])
+                    return self.path_and_cost[minpos]
 
-                    ################################## Sorted self.data_rate_estimate ###############################################
-                    self.data_rate_estimate = []
-                    self.data_rate_estimate =  [x for self.data_rate_estimate_copy, x in sorted(zip(sum_of_cost,self.data_rate_estimate_copy))]
-                    # print(self.data_rate_estimate)
+                   
                 else:
                     sum_of_cost = []
                     for each_path in self.path_and_cost:
@@ -1500,6 +1502,7 @@ class Report(app_manager.RyuApp):
                         path_3_cal = []
                         variance = []
                         calculate_variance = []
+                        time_estimate_old = time.time()
                         print("\n Sum of cost: {}".format(sum_of_cost))
                         for pair in b:
                             sum_of_cost_compare = copy.deepcopy(sum_of_cost)
@@ -1546,8 +1549,11 @@ class Report(app_manager.RyuApp):
                         for each_path in calculate_variance:
                             save = np.var(each_path)
                             variance.append(save)
-                        
+                        print("\n Variance:")
+                        print(variance)
+                        time_estimate_new = time.time()
                         minpos = variance.index(min(variance))
+                        print("\n All the time take for estimation: {}".format(time_estimate_new-time_estimate_old))
                         print("\n Optimal path : {}".format([path_1[minpos],path_2[minpos],path_3[minpos]]))
 
                         path_1_change = []

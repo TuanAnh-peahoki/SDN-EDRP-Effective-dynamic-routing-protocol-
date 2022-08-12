@@ -11,9 +11,9 @@ from sys import argv
 import argparse
 
 #Link parameter
-linkopts1 = dict(bw=1,  delay='1ms') #Host link
+linkopts1 = dict(bw=0.01,  delay='2ms') #Host link
 #linkopts2 = [dict(loss=2, bw=1000, delay='3ms'),dict(bw=1000, delay='3ms'),dict(loss=5, bw=1000, delay='3ms')] #Switch Link
-linkopts2 = dict( bw=1, delay='2ms') #Switch Link, link loss=10%
+linkopts2 = dict( bw=0.01, delay='2ms') #Switch Link, link loss=10%
 
 
 ##########################################################################################
